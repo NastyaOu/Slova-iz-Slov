@@ -30,7 +30,10 @@ bg_img = pygame.transform.scale(bg_img, (WIDTH, HEIGHT))
 bg_rect = bg_img.get_rect()
 
 result = ''
-words = ['ПОТ', 'КОТ', 'КАТ', 'ТОК']
+words = ['ОПТИКА', 'ПОТ', 'КОТ', 'КАТ', 'ТОК', 'ПАТОКА', 'ПТАШКА', 'ШАПИТО',
+         'ИКОТА', 'КАКАО', 'КАПОТ', 'КАТОК', 'КИШКА', 'КОШКА', 'ОПИАТ', 'ТАПКА',
+         'ИШАК', 'КИПА', 'ПАКТ', 'ПИКА', 'ШПАК', 'ТОП', 'ШОК', 'ПАТ',
+         'ОПТ', 'ШИК']
 results = []
 
 class TextBlock(pygame.sprite.Sprite):
@@ -167,20 +170,14 @@ class EraseButton(pygame.sprite.Sprite):
 
 def form_results():
     x = 50
-    full_cols = int(len(results) / 5)
-    for i in range(full_cols):
-        y = 150
-        for j in range(5):
-            tb = TextBlock(results[i * 5 + j], x, y)
-            all_sprites.add(tb)
-            y += 55
-        x += 150
-
     y = 150
-    for j in range(len(results) - full_cols * 5):
-        tb = TextBlock(results[j], x, y)
+    for i in range(len(results)):
+        tb = TextBlock(results[i], x, y)
         all_sprites.add(tb)
         y += 55
+        if (i + 1) % 5 == 0:
+            y = 150
+            x += 150
 
 all_sprites = pygame.sprite.Group()
 buttons = pygame.sprite.Group()
