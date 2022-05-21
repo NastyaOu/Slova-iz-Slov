@@ -30,6 +30,10 @@ clock = pygame.time.Clock()
 # настройка папки ассетов
 game_folder = os.path.dirname(__file__)
 img_folder = os.path.join(game_folder, 'foto')
+snd_folder = os.path.join(game_folder, 'zvuki')
+click_snd = pygame.mixer.Sound(os.path.join(snd_folder, 'click.wav'))
+victory_snd = pygame.mixer.Sound(os.path.join(snd_folder, 'victory.wav'))
+
 bg_img = pygame.image.load(os.path.join(img_folder, 'bg.png')).convert()
 accept_img = pygame.image.load(os.path.join(img_folder, 'accept.png')).convert()
 erase_img = pygame.image.load(os.path.join(img_folder, 'erase.png')).convert()
@@ -53,6 +57,10 @@ results = []
 
 forward = None
 
+allowed_symbols = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "z", "x", "c", "v", "b", "n", "m", "й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "ё"}
+set_word_symbols = {"й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э", "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", "ё"}
+
+#текстовые блоки
 class TextBlock(pygame.sprite.Sprite):
     def __init__(self, text, x, y, width, height, fz):
         pygame.sprite.Sprite.__init__(self)
@@ -71,7 +79,7 @@ class TextBlock(pygame.sprite.Sprite):
         text1 = f1.render(self.text, True, BLACK)
         self.image.blit(text1, ((self.width - text1.get_width()) / 2, (self.height - text1.get_height()) / 2))
 
-
+#блок вводимого слова
 class ResBlock(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -99,10 +107,10 @@ class ResBlock(pygame.sprite.Sprite):
     def get_text(self):
         return self.text
 
-
+#кнопки для букв исходного слова
 class Button(pygame.sprite.Sprite):
     def __init__(self, x, y, text, width, height, font_size):
-        self.pressed = False
+        self.is_pressed = False
         pygame.sprite.Sprite.__init__(self)
         self.text = text
         self.width = width
@@ -113,7 +121,7 @@ class Button(pygame.sprite.Sprite):
         self.rect.topleft = (x, y)
 
     def update(self):
-        if self.pressed:
+        if self.is_pressed:
             self.image.fill(GRAY)
         else:
             self.image.fill(WHITE)
@@ -125,19 +133,18 @@ class Button(pygame.sprite.Sprite):
         text1 = f1.render(self.text, True, BLACK)
         self.image.blit(text1, ((self.width - text1.get_width()) / 2, (self.height - text1.get_height()) / 2))
 
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_buttons = pygame.mouse.get_pressed()
-        if self.rect.collidepoint(mouse_pos) and mouse_buttons[0]:
-            if not self.pressed:
-                global result
-                result += self.text
-            self.set_pressed(True)
-            print(self.text)
+    def pressed(self):
+        if not self.is_pressed:
+            click_snd.play()
+            global result
+            result += self.text
+        self.set_pressed(True)
+        print(self.text)
 
-    def set_pressed(self, pressed):
-        self.pressed = pressed
+    def set_pressed(self, is_pressed):
+        self.is_pressed = is_pressed
 
-
+#блок с изображением
 class ImageButton(pygame.sprite.Sprite):
     def __init__(self, x, y, width, height, image):
         pygame.sprite.Sprite.__init__(self)
@@ -150,7 +157,7 @@ class ImageButton(pygame.sprite.Sprite):
         self.border_color = BLACK
         pygame.draw.rect(self.image, self.border_color, self.border, 3)
 
-
+#кнопка "готово"
 class AcceptButton(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -163,38 +170,34 @@ class AcceptButton(pygame.sprite.Sprite):
         self.border_color = BLACK
         pygame.draw.rect(self.image, self.border_color, self.border, 3)
 
-    def update(self):
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_buttons = pygame.mouse.get_pressed()
-        if self.rect.collidepoint(mouse_pos) and mouse_buttons[0]:
-            global result
-            global level
-            global words
-            global forward
+    def pressed(self):
+        click_snd.play()
+        global result
+        global level
+        global words
+        global forward
 
-            print(result)
-            print(words)
-            if result in words and len(result) < 40:
-                print('added')
-                results.append(result)
-                words.remove(result)
+        if result in words and len(results) < 40:
+            results.append(result)
+            words.remove(result)
 
-                if len(results) == 40 or len(words) == 0:
-                    forward = ImageButton(1137, 40, 103, 55, forward_img)
-                    all_sprites.add(forward)
+            if len(results) == 40 or len(words) == 0:
+                victory_snd.play()
+                forward = ImageButton(1137, 40, 103, 55, forward_img)
+                all_sprites.add(forward)
 
-                for i in range(len(users)):
-                    if users[i]['name'] == user['name']:
-                        users[i]['progress'][level - 1].append(result)
+            for i in range(len(users)):
+                if users[i]['name'] == user['name']:
+                    users[i]['progress'][level - 1].append(result)
 
-                with open('users.txt', 'w') as users_file:
-                    json.dump(users, users_file)
+            with open('users.txt', 'w') as users_file:
+                json.dump(users, users_file)
 
-                result = ''
-                for button in buttons:
-                    button.set_pressed(False)
+            result = ''
+            for button in buttons:
+                button.set_pressed(False)
 
-
+#кнопка "стереть"
 class EraseButton(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -207,21 +210,19 @@ class EraseButton(pygame.sprite.Sprite):
         self.border_color = BLACK
         pygame.draw.rect(self.image, self.border_color, self.border, 3)
 
-    def update(self):
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_buttons = pygame.mouse.get_pressed()
-        if self.rect.collidepoint(mouse_pos) and mouse_buttons[0]:
-            global result
-            result = ''
-            for button in buttons:
-                button.set_pressed(False)
+    def pressed(self):
+        click_snd.play()
+        global result
+        result = ''
+        for button in buttons:
+            button.set_pressed(False)
 
-
+#процедура для создания текстовых блоков
 def new_tb(text, x, y, width, height, fz):
     tb = TextBlock(text, x, y, width, height, fz)
     all_sprites.add(tb)
 
-
+#процедура для формирования сетки ответов
 def form_results():
     global results
     x = 50
@@ -233,7 +234,7 @@ def form_results():
             y = 150
             x += 150
 
-
+#процедура для вывода текста на экран
 def print_text(surface, x, y, text, fz):
     font = pygame.font.Font(None, fz)
     text_img = font.render(text, True, BLACK)
@@ -241,7 +242,7 @@ def print_text(surface, x, y, text, fz):
     text_rect.topleft = (x, y)
     surface.blit(text_img, text_rect)
 
-
+#процедура для вывода экрана "задать слово"
 def show_set_word():
     global word
 
@@ -273,16 +274,18 @@ def show_set_word():
                 if event.button == pygame.BUTTON_LEFT:
                     mouse_pos = pygame.mouse.get_pos()
                     if accept.rect.collidepoint(mouse_pos):
+                        click_snd.play()
                         waiting = False
 
                     if back.rect.collidepoint(mouse_pos):
+                        click_snd.play()
                         waiting = False
 
             if event.type == pygame.KEYDOWN:
                 print(word)
                 if event.key == pygame.K_BACKSPACE:
                     word = word[:-1]
-                elif len(word) < 13:
+                elif len(word) < 13 and event.unicode in set_word_symbols:
                     word += event.unicode
 
                 form = TextBlock(word, 360, 330, 560, 50, 36)
@@ -291,7 +294,7 @@ def show_set_word():
 
                 pygame.display.flip()
 
-
+#процедура для вывода экрана ввода имени
 def show_profile():
     global user
     username = ''
@@ -348,13 +351,14 @@ def show_profile():
                             with open('users.txt', 'w') as users_file:
                                 json.dump(users, users_file)
 
+                        click_snd.play()
                         waiting = False
 
             if event.type == pygame.KEYDOWN:
                 print(username)
                 if event.key == pygame.K_BACKSPACE:
                     username = username[:-1]
-                elif len(username) < 32:
+                elif len(username) < 32 and event.unicode in allowed_symbols:
                     username += event.unicode
 
                 form = TextBlock(username, 360, 330, 560, 50, 36)
@@ -363,13 +367,12 @@ def show_profile():
 
                 pygame.display.flip()
 
-
+#процедура для вывода экрана игры
 def show_game():
     global word
     global level
     global words
     global results
-
     global forward
 
     resblock = ResBlock()
@@ -404,16 +407,29 @@ def show_game():
         clock.tick(FPS)
         # Ввод процесса (события)
         for event in pygame.event.get():
-            # check for closing window
             if event.type == pygame.QUIT:
                 pygame.quit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
                     mouse_pos = pygame.mouse.get_pos()
+                    for button in buttons:
+                        if button.rect.collidepoint(mouse_pos):
+                            button.pressed()
+
+                    if accept_btn.rect.collidepoint(mouse_pos):
+                        accept_btn.pressed()
+
+                    if erase_btn.rect.collidepoint(mouse_pos):
+                        erase_btn.pressed()
+
                     if back.rect.collidepoint(mouse_pos):
+                        global result
+                        result = ''
+                        click_snd.play()
                         waiting = False
 
                     if forward != None and forward.rect.collidepoint(mouse_pos):
+                        click_snd.play()
                         forward = None
 
                         level += 1
@@ -452,7 +468,6 @@ def show_game():
                             buttons.add(button)
                             x += letter_width + letter_spacing
 
-
         # Обновление
         resblock.set_text(result)
         all_sprites.update()
@@ -468,7 +483,7 @@ def show_game():
     all_sprites.empty()
     buttons.empty()
 
-
+#процедура для вывода экрана "выбора уровня"
 def show_levels():
     global words
     global word
@@ -517,6 +532,7 @@ def show_levels():
                     mouse_pos = pygame.mouse.get_pos()
                     for block in blocks:
                         if block.rect.collidepoint(mouse_pos):
+                            click_snd.play()
                             level = int(block.text)
                             word = levels[level - 1]['word']
                             words = levels[level - 1]['words']
@@ -558,9 +574,10 @@ def show_levels():
                             pygame.display.flip()
 
                     if back.rect.collidepoint(mouse_pos):
+                        click_snd.play()
                         waiting = False
 
-
+#процедура для вывода экрана "играть"
 def show_play():
     options = ['ПРОДОЛЖИТЬ', 'ЗАДАТЬ СЛОВО']
     blocks = pygame.sprite.Group()
@@ -591,6 +608,7 @@ def show_play():
                     mouse_pos = pygame.mouse.get_pos()
                     for block in blocks:
                         if block.rect.collidepoint(mouse_pos):
+                            click_snd.play()
                             match block.text:
                                 case 'ПРОДОЛЖИТЬ':
                                     show_levels()
@@ -609,9 +627,10 @@ def show_play():
                                     pygame.display.flip()
 
                     if back.rect.collidepoint(mouse_pos):
+                        click_snd.play()
                         waiting = False
 
-
+#процедура для вывода правил
 def show_rules():
     surf = pygame.surface.Surface((640, 360))
     surf.fill((229, 229, 229))
@@ -644,9 +663,10 @@ def show_rules():
                 pygame.quit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
+                    click_snd.play()
                     waiting = False
 
-
+#процедура для отрисовки ползунка
 def draw_slider():
     pygame.draw.line(screen, BLACK, (570, 270), (840, 270), 6)
     pygame.draw.line(screen, BLACK, (570, 285), (570, 255), 6)
@@ -657,7 +677,7 @@ def draw_slider():
     pygame.draw.line(screen, BLACK, (830, 235), (850, 235), 6)
     pygame.draw.line(screen, BLACK, (840, 225), (840, 245), 6)
 
-
+#процедура для вывода экрана "настройки"
 def show_settings():
     global volume
     start = 570
@@ -694,6 +714,7 @@ def show_settings():
                 if event.button == pygame.BUTTON_LEFT:
                     mouse_pos = pygame.mouse.get_pos()
                     if back.rect.collidepoint(mouse_pos):
+                        click_snd.play()
                         waiting = False
 
         print(volume)
@@ -715,13 +736,15 @@ def show_settings():
             screen.blit(circle, circle_rect)
 
             volume = (circle_rect.centerx - start) / (end - start)
+            click_snd.set_volume(volume)
+            victory_snd.set_volume(volume)
 
             with open('settings.txt', 'w') as settings_file:
                 json.dump(volume, settings_file)
 
             pygame.display.flip()
 
-
+#процедура для вывода экрана меню
 def show_menu():
     global user
     options = ['ИГРАТЬ', 'ПРАВИЛА', 'НАСТРОЙКИ', 'ВЫХОД']
@@ -754,6 +777,7 @@ def show_menu():
                     mouse_pos = pygame.mouse.get_pos()
                     for block in blocks:
                         if block.rect.collidepoint(mouse_pos):
+                            click_snd.play()
                             match block.text:
                                 case 'ИГРАТЬ':
                                     show_play()
@@ -792,7 +816,6 @@ def show_menu():
                                 blocks.draw(screen)
 
                                 pygame.display.flip()
-
 
 all_sprites = pygame.sprite.Group()
 buttons = pygame.sprite.Group()
